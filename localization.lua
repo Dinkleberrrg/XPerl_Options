@@ -168,6 +168,8 @@ XPERL_CONF_PLAYER_PET_SCALE             = "Pet Frame Scale"
 XPERL_CONF_PLAYER_PET_SCALE_DESC        = "Adjust the Pet Frame Scale"
 XPERL_CONF_PLAYER_PET_BUFF_SIZE		= "Pet Buff Size"
 XPERL_CONF_PLAYER_PET_BUFF_SIZE_DESC	= "Adjust the display size of your pet's buffs and debuffs"
+XPERL_CONF_PLAYER_PET_WIDTH		= "Pet Frame Width"
+XPERL_CONF_PLAYER_PET_WIDTH_DESC	= "Adjust the Pet Frame Width"
 
 XPERL_CONF_TARGET_PORTRAIT              = "Target Portrait"
 XPERL_CONF_TARGET_PORTRAIT_DESC         = "Enable display of target's portrait\r|c00FF0000NOTE: Combat Hit Indicator is dependant on this."

@@ -3382,6 +3382,42 @@
                                                                         </OnValueChanged>
                                                                 </Scripts>
                                                         </Slider>
+														
+														<Slider name="$parent_Width" inherits="XPerlSlider">
+                                                                <Size>
+                                                                        <AbsDimension x="160" y="16"/>
+                                                                </Size>
+                                                                <Anchors>
+                                                                        <Anchor point="TOPLEFT" relativePoint="BOTTOMLEFT" relativeTo="$parent_Values">
+                                                                                <Offset>
+                                                                                        <AbsDimension x="3" y="-84" />
+                                                                                </Offset>
+                                                                        </Anchor>
+                                                                </Anchors>
+                                                                <Scripts>
+                                                                        <OnLoad>
+                                                                                XPerl_OptionsSetMyText(this, "XPERL_CONF_PLAYER_PET_WIDTH")
+                                                                                <!--XPerl_Options_RegisterScalingSlider(this)-->
+																				
+																				getglobal(this:GetName().."Low"):SetText("100%")
+																				getglobal(this:GetName().."High"):SetText("300%")
+
+																				this:SetMinMaxValues(10, 30)
+																				this:SetValueStep(1)
+                                                                        </OnLoad>
+                                                                        <OnShow>
+                                                                                this:SetValue(math.floor(10 * XPerlConfig.Width_PetFrame + 0.5))
+                                                                        </OnShow>
+                                                                        <OnValueChanged>
+                                                                                <!--if (math.floor(100 * XPerlConfig.Width_PetFrame + 0.5) ~= this:GetValue()) then-->
+																				if (math.floor(10 * XPerlConfig.Width_PetFrame + 0.5) ~= this:GetValue()) then
+                                                                                        XPerlConfig.Width_PetFrame = this:GetValue() / 10
+                                                                                        XPerl_OptionActions()
+                                                                                end
+                                                                                getglobal(this:GetName().."Current"):SetText(math.floor(100 * XPerlConfig.Width_PetFrame + 0.5).."%")
+                                                                        </OnValueChanged>
+                                                                </Scripts>
+                                                        </Slider>
                                                 </Frames>
                                         </Frame>
                                 </Frames>
