@@ -52,15 +52,36 @@ function XPerl_GetCheck(f)
 	end
 end
 
+-- [patch] Octos FrameXML stellt OptionsFrame_DisableSlider/-EnableSlider nicht
+-- bereit; XPerl_Options ist daran bei jedem Laden mit einem nil-Aufruf
+-- gestorben. Fallback ist die Originalimplementierung aus OptionsFrame.lua.
+local function FallbackDisableSlider(slider)
+	local name = slider:GetName()
+	getglobal(name.."Thumb"):Hide()
+	getglobal(name.."Text"):SetVertexColor(GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b)
+	getglobal(name.."Low"):SetVertexColor(GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b)
+	getglobal(name.."High"):SetVertexColor(GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b)
+end
+
+local function FallbackEnableSlider(slider)
+	local name = slider:GetName()
+	getglobal(name.."Thumb"):Show()
+	getglobal(name.."Text"):SetVertexColor(NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b)
+	getglobal(name.."Low"):SetVertexColor(HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
+	getglobal(name.."High"):SetVertexColor(HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b)
+end
+
 -- DisableSlider
 local function DisableSlider(frame)
-	OptionsFrame_DisableSlider(frame)
+	local fn = OptionsFrame_DisableSlider or FallbackDisableSlider
+	fn(frame)
 	getglobal(frame:GetName().."Current"):SetVertexColor(GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b)
 end
 
 -- EnableSlider
 local function EnableSlider(frame)
-	OptionsFrame_EnableSlider(frame)
+	local fn = OptionsFrame_EnableSlider or FallbackEnableSlider
+	fn(frame)
         getglobal(frame:GetName().."Current"):SetVertexColor(0.4, 0.4, 0.80)
 end
 
@@ -256,15 +277,26 @@ local function GetPlayerList()
 	local ret = {}
 	if (XPerlConfig_Global) then
 		local me = GetRealmName().." / "..UnitName("player")
+
 		for realmName, realmConfig in pairs(XPerlConfig_Global) do
 			for playerName, settings in pairs(realmConfig) do
-				local entry = realmName.." / "..playerName
+				tinsert(ret, {name = realmName.." / "..playerName, config = settings})
+			end
+		end
 
-				tinsert(ret, {name = entry, config = settings})
+		-- [patch] pairs() laeuft in Lua 5.0 in unbestimmter Reihenfolge, und
+		-- diese Liste wird zweimal gebaut: einmal fuer die Menueeintraege und
+		-- noch einmal beim Klick, um aus this:GetID() den Eintrag zu holen.
+		-- Kamen die beiden Durchlaeufe in verschiedener Reihenfolge heraus,
+		-- klickte man auf einen Charakter und bekam die Einstellungen eines
+		-- anderen. Feste Sortierung macht beide Durchlaeufe identisch.
+		table.sort(ret, function(a, b) return a.name < b.name end)
 
-				if (entry == me) then
-					MyIndex = getn(ret)
-				end
+		-- [patch] MyIndex erst nach dem Sortieren bestimmen
+		MyIndex = 0
+		for i = 1, table.getn(ret) do
+			if (ret[i].name == me) then
+				MyIndex = i
 			end
 		end
 	end
@@ -273,6 +305,11 @@ end
 
 -- XPerl_Options_LoadSettings_OnLoad
 function XPerl_Options_LoadSettings_OnLoad()
+	-- [patch] MyIndex entsteht erst als Nebenwirkung von GetPlayerList().
+	-- Ohne diesen Aufruf stand hier immer 0 und das Aufklappmenue zeigte
+	-- beim Oeffnen keinen ausgewaehlten Eintrag.
+	GetPlayerList()
+
 	this.displayMode = "MENU"
 	UIDropDownMenu_Initialize(this, XPerl_Options_LoadSettings_Initialize)
 	UIDropDownMenu_SetSelectedID(this, MyIndex, 1)
@@ -295,15 +332,40 @@ end
 -- CopySelectedSettings
 local CopyFrom
 local function CopySelectedSettings()
-	--ChatFrame7:AddMessage("Copying settings from "..CopyFrom)
-	--UIDropDownMenu_SetSelectedID(XPerl_Options_DropDown_LoadSettings, this:GetID(), 1)
+	-- [patch] Hier steckten drei Fehler uebereinander:
+	--
+	--   1. Flache Kopie. Untertabellen - saemtliche Farben, BackColour,
+	--      BorderColour, RaidPositions - wurden nur verlinkt. Ab dem Kopieren
+	--      aenderten beide Charaktere dieselben Werte.
+	--   2. XPerlConfig wurde durch eine NEUE Tabelle ersetzt, waehrend
+	--      XPerlConfig_Global[realm][char] weiter auf die alte zeigte. Beim
+	--      naechsten Anmelden wurde von dort geladen und die Kopie war weg.
+	--      Genau das ist das "Profil uebernimmt nicht"-Verhalten.
+	--   3. Die Fensterpositionen des anderen Charakters kamen mit.
 
-	XPerlConfig = {}
+	-- [patch] Vor dem Kopieren den eigenen Stand festhalten, damit das, was
+	-- hier liegt, aktuell ist - und damit man zurueck kann.
+	XPerl_CapturePositions()
+	XPerl_LastPositions = XPerl_DeepCopy(XPerlConfig.SavedPositions)
+
+	local fresh = {}
+	for name, value in pairs(CopyFrom.config) do
+		fresh[name] = XPerl_DeepCopy(value)
+	end
+
+	XPerlConfig = fresh
 	XPerl_Defaults()
 
-	for name,value in pairs(CopyFrom.config) do
-		XPerlConfig[name] = value
+	-- Die neue Tabelle auch dort eintragen, wo beim naechsten Login gelesen wird
+	if (XPerlConfigSavePerCharacter) then
+		local slot, name = XPerl_GlobalSlot()
+		slot[name] = XPerlConfig
 	end
+
+	-- [patch] Und jetzt die Rahmen tatsaechlich dorthin setzen. Ohne diesen
+	-- Aufruf bleibt alles stehen, wo es stand - genau das Verhalten, das
+	-- man als "die Positionen kommen nicht mit" sieht.
+	XPerl_ApplyPositions()
 
 	XPerl_Options:Hide()
 	XPerl_Options:Show()
