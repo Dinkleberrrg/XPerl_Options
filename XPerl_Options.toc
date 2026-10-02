@@ -4,4 +4,5 @@
 ## Author: Redbu11
 ## RequiredDeps: XPerl
 ## LoadOnDemand: 1
+## Version: 1.9.6.1-octo.1
 XPerl_FrameOptions.xml
