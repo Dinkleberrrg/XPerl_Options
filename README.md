@@ -2,9 +2,9 @@
 
 X-Perl module: options window. Requires the XPerl repository (https://github.com/Dinkleberrrg/XPerl).
 
-## OctoWoW changes compared to the original
+## Notable changes
 
-Original: **Redbu11dev/X-Perl-UnitFrames**. This fork (by Dinkleberrrg) changes:
+Fork of **Redbu11dev/X-Perl-UnitFrames**.
 
 - Options window no longer crashes on OctoWoW (missing slider functions).
 - Character list in "copy settings" is sorted, so you get the character you clicked.
